@@ -40,12 +40,11 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/products/{id}', [ProductController::class, 'update']);
     Route::delete('/products/{id}', [ProductController::class, 'destroy']);
 
+    // Q&A Messages
     Route::get('/messages', [MessageController::class, 'index']);
     Route::post('/messages', [MessageController::class, 'store']);
+    Route::post('/messages/{id}/answer', [MessageController::class, 'answer']);
     Route::delete('/messages/{id}', [MessageController::class, 'destroy']);
-    Route::post('/messages/delete-multiple', [MessageController::class, 'destroyMultiple']);
-    Route::post('/messages/{id}/comments', [MessageController::class, 'addComment']);
-    Route::post('/messages/{id}/interactions', [MessageController::class, 'toggleInteraction']);
 
     // Cart routes
     Route::prefix('cart')->group(function () {

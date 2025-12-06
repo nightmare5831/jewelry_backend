@@ -6,21 +6,19 @@ use Illuminate\Database\Eloquent\Model;
 
 class Message extends Model
 {
-    protected $fillable = ['user_id', 'content', 'favorite', 'good', 'bad'];
+    protected $fillable = ['from_user_id', 'to_user_id', 'question', 'answer', 'answered_at'];
 
     protected $casts = [
-        'favorite' => 'array',
-        'good' => 'array',
-        'bad' => 'array',
+        'answered_at' => 'datetime',
     ];
 
-    public function user()
+    public function fromUser()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'from_user_id');
     }
 
-    public function comments()
+    public function toUser()
     {
-        return $this->hasMany(Comment::class);
+        return $this->belongsTo(User::class, 'to_user_id');
     }
 }

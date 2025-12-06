@@ -16,15 +16,17 @@ class ProductController extends Controller
 
         if ($user && $user->isSeller()) {
             // Web App (Authenticated Seller) - Show their own products
-            $products = Product::where('seller_id', $user->id)
+            $products = Product::with('seller')
+                ->where('seller_id', $user->id)
                 ->latest()
                 ->paginate(20);
         } elseif ($user && $user->isAdmin()) {
             // Web App (Admin) - Show all products
-            $products = Product::latest()->paginate(20);
+            $products = Product::with('seller')->latest()->paginate(20);
         } else {
             // Android App (Public) - Show only approved & active products
-            $products = Product::where('status', 'approved')
+            $products = Product::with('seller')
+                ->where('status', 'approved')
                 ->where('is_active', true)
                 ->latest()
                 ->paginate(20);
