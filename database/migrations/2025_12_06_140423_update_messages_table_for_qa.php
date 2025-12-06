@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -10,6 +11,9 @@ return new class extends Migration
     {
         // Drop old comments table
         Schema::dropIfExists('comments');
+
+        // Delete all existing messages (old format incompatible with new Q&A format)
+        DB::table('messages')->truncate();
 
         // Update messages table for Q&A format
         Schema::table('messages', function (Blueprint $table) {
