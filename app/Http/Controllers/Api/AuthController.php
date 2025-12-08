@@ -97,16 +97,20 @@ class AuthController extends Controller
             ], 403);
         }
 
-        // Check if seller is approved
-        if ($user->role === 'seller' && !$user->seller_approved) {
-            // Logout to invalidate token
-            auth()->logout();
+        // Check if seller is approved (support both old and new approval fields)
+        if ($user->role === 'seller') {
+            $isApproved = $user->seller_approved || $user->seller_status === 'approved';
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Your seller account is pending approval. Please wait for admin approval.',
-                'seller_status' => $user->seller_status ?? 'pending'
-            ], 403);
+            if (!$isApproved) {
+                // Logout to invalidate token
+                auth()->logout();
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your seller account is pending approval. Please wait for admin approval.',
+                    'seller_status' => $user->seller_status ?? 'pending'
+                ], 403);
+            }
         }
 
         return response()->json([

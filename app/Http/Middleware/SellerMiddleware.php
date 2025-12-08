@@ -16,13 +16,19 @@ class SellerMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         if (!auth()->check()) {
-            return response()->json(['message' => 'Unauthenticated'], 401);
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Unauthenticated'], 401);
+            }
+            return redirect()->route('login');
         }
 
         $user = auth()->user();
 
         if (!$user->isSeller() && !$user->isAdmin()) {
-            return response()->json(['message' => 'Forbidden. Seller access required.'], 403);
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Forbidden. Seller access required.'], 403);
+            }
+            return redirect()->route('login')->with('error', 'Acesso negado. Apenas vendedores aprovados.');
         }
 
         return $next($request);

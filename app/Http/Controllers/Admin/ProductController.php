@@ -126,6 +126,8 @@ class ProductController extends Controller
         $product->update([
             'status' => 'pending',
             'rejection_reason' => null,
+            'approved_by' => null,
+            'approved_at' => null,
         ]);
 
         return back()->with('success', 'Produto recuperado para revisão');

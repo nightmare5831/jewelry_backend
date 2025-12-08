@@ -10,12 +10,14 @@ use Illuminate\Support\Facades\Validator;
 
 class ProductController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        // Check if this is a request for seller's own products (via seller_view param or from web dashboard)
+        $sellerView = $request->query('seller_view') === 'true';
         $user = Auth::user();
 
-        if ($user && $user->isSeller()) {
-            // Web App (Authenticated Seller) - Show their own products
+        if ($sellerView && $user && $user->isSeller()) {
+            // Seller requesting their own products (for management)
             $products = Product::with('seller')
                 ->where('seller_id', $user->id)
                 ->latest()
@@ -24,8 +26,11 @@ class ProductController extends Controller
             // Web App (Admin) - Show all products
             $products = Product::with('seller')->latest()->paginate(20);
         } else {
-            // Android App (Public) - Show only approved & active products
+            // Mobile App (Public/Buyer/Seller browsing) - Show only approved & active products from active sellers
             $products = Product::with('seller')
+                ->whereHas('seller', function ($query) {
+                    $query->where('is_active', true);
+                })
                 ->where('status', 'approved')
                 ->where('is_active', true)
                 ->latest()
@@ -93,7 +98,12 @@ class ProductController extends Controller
         $user = Auth::user();
         $product = Product::with(['seller'])->findOrFail($id);
 
-        if ($product->seller_id !== $user->id && !$product->isApproved() && !$user->isAdmin()) {
+        // Allow viewing if: product is approved, OR user is the seller, OR user is admin
+        $canView = $product->isApproved() ||
+                   ($user && $product->seller_id === $user->id) ||
+                   ($user && $user->isAdmin());
+
+        if (!$canView) {
             return response()->json(['error' => 'Product not found'], 404);
         }
 
@@ -109,10 +119,6 @@ class ProductController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        if ($product->isApproved()) {
-            return response()->json(['error' => 'Cannot edit approved products. Please contact admin.'], 403);
-        }
-
         $validator = Validator::make($request->all(), [
             'name' => 'sometimes|string|max:255',
             'description' => 'sometimes|string',
@@ -122,7 +128,7 @@ class ProductController extends Controller
             'gold_karat' => 'sometimes|in:18k,22k,24k',
             'base_price' => 'sometimes|numeric|min:0',
             'stock_quantity' => 'sometimes|integer|min:0',
-            'images' => 'nullable|json',
+            'images' => 'nullable',
             'model_3d_url' => 'nullable|url',
         ]);
 
@@ -130,11 +136,40 @@ class ProductController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $product->update($request->all());
+        $updateData = $request->only([
+            'name', 'description', 'category', 'subcategory',
+            'gold_weight_grams', 'gold_karat', 'base_price',
+            'stock_quantity', 'model_3d_url'
+        ]);
+
+        // Handle images - can be array or JSON string
+        if ($request->has('images')) {
+            $images = $request->images;
+            if (is_array($images)) {
+                $updateData['images'] = json_encode($images);
+            } else {
+                $updateData['images'] = $images;
+            }
+        }
+
+        // If product was approved and is being edited, set it back to pending for re-review
+        $wasApproved = $product->isApproved();
+        if ($wasApproved) {
+            $updateData['status'] = 'pending';
+            $updateData['approved_by'] = null;
+            $updateData['approved_at'] = null;
+        }
+
+        $product->update($updateData);
+
+        $message = $wasApproved
+            ? 'Product updated successfully. It has been sent for re-approval.'
+            : 'Product updated successfully';
 
         return response()->json([
-            'message' => 'Product updated successfully',
+            'message' => $message,
             'product' => $product,
+            'requires_approval' => $wasApproved,
         ]);
     }
 

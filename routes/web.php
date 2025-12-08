@@ -63,6 +63,14 @@ Route::prefix('admin')->middleware(['auth', 'super_admin'])->group(function () {
 
 Route::prefix('seller')->middleware(['auth', 'seller'])->group(function () {
     Route::get('/dashboard', [\App\Http\Controllers\Seller\DashboardController::class, 'index'])->name('seller.dashboard');
+
+    // Product management routes
+    Route::get('/products', [\App\Http\Controllers\Seller\ProductController::class, 'index'])->name('seller.products.index');
+    Route::get('/products/create', [\App\Http\Controllers\Seller\ProductController::class, 'create'])->name('seller.products.create');
+    Route::post('/products', [\App\Http\Controllers\Seller\ProductController::class, 'store'])->name('seller.products.store');
+    Route::get('/products/{id}/edit', [\App\Http\Controllers\Seller\ProductController::class, 'edit'])->name('seller.products.edit');
+    Route::put('/products/{id}', [\App\Http\Controllers\Seller\ProductController::class, 'update'])->name('seller.products.update');
+    Route::delete('/products/{id}', [\App\Http\Controllers\Seller\ProductController::class, 'destroy'])->name('seller.products.destroy');
 });
 
 Route::prefix('buyer')->middleware(['auth'])->group(function () {
