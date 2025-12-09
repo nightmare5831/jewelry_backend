@@ -83,10 +83,6 @@ class ProductSeeder extends Seeder
             ['name' => 'Pulseira Masculina Grossa', 'category' => 'Masculino', 'subcategory' => 'Pulseiras', 'gold_weight' => 10.0, 'base_price' => 4200.00],
             ['name' => 'Pulseira Masculina Cartier', 'category' => 'Masculino', 'subcategory' => 'Pulseiras', 'gold_weight' => 8.5, 'base_price' => 3800.00],
 
-            // Masculino - Brincos
-            ['name' => 'Brinco Masculino Argola', 'category' => 'Masculino', 'subcategory' => 'Brincos', 'gold_weight' => 2.0, 'base_price' => 1200.00],
-            ['name' => 'Brinco Masculino Solitário', 'category' => 'Masculino', 'subcategory' => 'Brincos', 'gold_weight' => 1.5, 'base_price' => 950.00],
-
             // Feminino - Anéis
             ['name' => 'Anel Solitário Feminino', 'category' => 'Feminino', 'subcategory' => 'Anéis', 'gold_weight' => 3.5, 'base_price' => 1800.00],
             ['name' => 'Anel Meia Aliança', 'category' => 'Feminino', 'subcategory' => 'Anéis', 'gold_weight' => 4.0, 'base_price' => 2100.00],
@@ -98,10 +94,6 @@ class ProductSeeder extends Seeder
             // Feminino - Pulseiras
             ['name' => 'Pulseira Feminina Delicada', 'category' => 'Feminino', 'subcategory' => 'Pulseiras', 'gold_weight' => 5.0, 'base_price' => 2400.00],
             ['name' => 'Pulseira Cartier Feminina', 'category' => 'Feminino', 'subcategory' => 'Pulseiras', 'gold_weight' => 6.0, 'base_price' => 2750.00],
-
-            // Feminino - Brincos
-            ['name' => 'Brinco Argola Média', 'category' => 'Feminino', 'subcategory' => 'Brincos', 'gold_weight' => 3.0, 'base_price' => 1600.00],
-            ['name' => 'Brinco Solitário', 'category' => 'Feminino', 'subcategory' => 'Brincos', 'gold_weight' => 2.5, 'base_price' => 1400.00],
 
             // Formatura - Anéis
             ['name' => 'Anel de Formatura Direito', 'category' => 'Formatura', 'subcategory' => 'Anéis', 'gold_weight' => 8.5, 'base_price' => 3800.00],
@@ -115,10 +107,6 @@ class ProductSeeder extends Seeder
             ['name' => 'Broche de Formatura Clássico', 'category' => 'Formatura', 'subcategory' => 'Broches', 'gold_weight' => 3.5, 'base_price' => 1650.00],
             ['name' => 'Broche de Formatura Moderno', 'category' => 'Formatura', 'subcategory' => 'Broches', 'gold_weight' => 4.0, 'base_price' => 1850.00],
 
-            // Formatura - Abotoaduras
-            ['name' => 'Abotoadura de Formatura Ouro', 'category' => 'Formatura', 'subcategory' => 'Abotoaduras', 'gold_weight' => 5.0, 'base_price' => 2200.00],
-            ['name' => 'Abotoadura Personalizada', 'category' => 'Formatura', 'subcategory' => 'Abotoaduras', 'gold_weight' => 5.5, 'base_price' => 2400.00],
-
             // Casamento - Alianças
             ['name' => 'Aliança de Casamento Lisa', 'category' => 'Casamento', 'subcategory' => 'Alianças', 'gold_weight' => 4.0, 'base_price' => 1900.00],
             ['name' => 'Aliança de Casamento Trabalhada', 'category' => 'Casamento', 'subcategory' => 'Alianças', 'gold_weight' => 4.5, 'base_price' => 2100.00],
@@ -130,10 +118,6 @@ class ProductSeeder extends Seeder
             // Casamento - Tiaras
             ['name' => 'Tiara de Noiva Delicada', 'category' => 'Casamento', 'subcategory' => 'Tiaras', 'gold_weight' => 8.0, 'base_price' => 3500.00],
             ['name' => 'Tiara de Noiva Luxuosa', 'category' => 'Casamento', 'subcategory' => 'Tiaras', 'gold_weight' => 10.0, 'base_price' => 4300.00],
-
-            // Casamento - Pulseiras
-            ['name' => 'Pulseira de Noiva Elegante', 'category' => 'Casamento', 'subcategory' => 'Pulseiras', 'gold_weight' => 7.0, 'base_price' => 3100.00],
-            ['name' => 'Pulseira de Noiva com Pedras', 'category' => 'Casamento', 'subcategory' => 'Pulseiras', 'gold_weight' => 8.5, 'base_price' => 3700.00],
         ];
     }
 

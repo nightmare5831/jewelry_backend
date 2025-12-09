@@ -26,9 +26,9 @@ export default function Dashboard({ products, filters }) {
 
     const subcategories = {
         'Masculino': ['Anéis', 'Colares', 'Pulseiras'],
-        'Feminino': ['Anéis', 'Colares', 'Brincos', 'Pulseiras'],
-        'Formatura': ['Anéis'],
-        'Casamento': ['Anéis'],
+        'Feminino': ['Anéis', 'Colares', 'Pulseiras'],
+        'Formatura': ['Anéis', 'Medalhas', 'Broches'],
+        'Casamento': ['Alianças', 'Conjuntos', 'Tiaras'],
     };
 
     return (
