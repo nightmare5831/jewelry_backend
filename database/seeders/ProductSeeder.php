@@ -53,8 +53,8 @@ class ProductSeeder extends Seeder
                 'category' => $productData['category'],
                 'subcategory' => $productData['subcategory'],
                 'images' => json_encode($images),
-                // Use external GitHub repository for 3D model files
-                'model_3d_url' => 'https://github.com/nightmare5831/public_asset/releases/download/3d-models-v1/jewelry.glb',
+                // Use Laravel Cloud public URL for 3D model files
+                'model_3d_url' => 'https://jewelry-backend-main-wj7bry.laravel.cloud/jewelry.glb',
                 'model_3d_type' => 'glb',
                 'stock_quantity' => rand(5, 50),
                 'is_active' => true,
