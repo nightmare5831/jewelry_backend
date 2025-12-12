@@ -27,8 +27,7 @@ class ProductSeeder extends Seeder
         $descriptions = $this->getDescriptions();
         $karats = ['18k', '18k', '18k', '14k', '14k', '10k'];
 
-        // Base URL for images - using localhost for development
-        $baseUrl = 'https://github.com/nightmare5831/jewelry_backend/tree/main/public/assets';
+        $baseUrl = 'https://raw.githubusercontent.com/nightmare5831/jewelry_backend/main/public/assets/';
 
         foreach ($products as $index => $productData) {
             $seller = $sellers->random();
