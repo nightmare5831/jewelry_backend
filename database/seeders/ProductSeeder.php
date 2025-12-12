@@ -23,7 +23,6 @@ class ProductSeeder extends Seeder
         $currentGoldPrice = $latestGoldPrice?->price_gram_18k ?? 99.17;
 
         $products = $this->getProductsData();
-        $statuses = ['pending', 'approved', 'rejected'];
         $descriptions = $this->getDescriptions();
         $karats = ['18k', '18k', '18k', '14k', '14k', '10k'];
 
@@ -32,7 +31,6 @@ class ProductSeeder extends Seeder
 
         foreach ($products as $index => $productData) {
             $seller = $sellers->random();
-            $status = $statuses[array_rand($statuses)];
             $karat = $karats[array_rand($karats)];
             $currentPrice = $productData['base_price'];
 
@@ -65,10 +63,10 @@ class ProductSeeder extends Seeder
                 'model_3d_type' => 'glb',
                 'stock_quantity' => rand(5, 50),
                 'is_active' => true,
-                'status' => $status,
-                'approved_by' => $status !== 'pending' ? 1 : null,
-                'approved_at' => $status !== 'pending' ? now() : null,
-                'rejection_reason' => $status === 'rejected' ? 'Imagem de baixa qualidade' : null,
+                'status' => 'approved',
+                'approved_by' => 1,
+                'approved_at' => now(),
+                'rejection_reason' => null,
             ]);
         }
 
