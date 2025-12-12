@@ -27,6 +27,9 @@ class ProductSeeder extends Seeder
         $descriptions = $this->getDescriptions();
         $karats = ['18k', '18k', '18k', '14k', '14k', '10k'];
 
+        $fillingOptions = ['Solid', 'Hollow', 'Defense', null];
+        $gemstoneOptions = ['Synthetic', 'Natural', 'Without Stones', null];
+
         foreach ($products as $index => $productData) {
             $seller = $sellers->random();
             $status = $statuses[array_rand($statuses)];
@@ -54,6 +57,8 @@ class ProductSeeder extends Seeder
                 'initial_gold_price' => $currentGoldPrice,
                 'category' => $productData['category'],
                 'subcategory' => $productData['subcategory'],
+                'filling' => $fillingOptions[array_rand($fillingOptions)],
+                'is_gemstone' => $gemstoneOptions[array_rand($gemstoneOptions)],
                 'images' => json_encode($images),
                 // Use GitHub raw URL for 3D model files (no CORS issues)
                 'model_3d_url' => 'https://raw.githubusercontent.com/nightmare5831/jewelry_backend/main/public/jewelry.glb',
