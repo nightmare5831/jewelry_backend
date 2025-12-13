@@ -20,6 +20,37 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
 
+// Debug route - TODO: Remove in production
+Route::get('/debug/products', function () {
+    $maleProducts = \App\Models\Product::where('category', 'Male')->get();
+    $activeSellers = \App\Models\User::where('role', 'seller')->where('is_active', true)->get();
+    $maleWithActiveSellers = \App\Models\Product::where('category', 'Male')
+        ->whereHas('seller', function($q) {
+            $q->where('is_active', true);
+        })
+        ->get();
+
+    return response()->json([
+        'total_male_products' => $maleProducts->count(),
+        'male_products' => $maleProducts->map(fn($p) => [
+            'id' => $p->id,
+            'name' => $p->name,
+            'seller_id' => $p->seller_id,
+            'status' => $p->status,
+            'is_active' => $p->is_active,
+            'seller_exists' => $p->seller ? true : false,
+            'seller_is_active' => $p->seller?->is_active ?? false,
+        ]),
+        'total_active_sellers' => $activeSellers->count(),
+        'active_sellers' => $activeSellers->map(fn($s) => [
+            'id' => $s->id,
+            'name' => $s->name,
+            'is_active' => $s->is_active,
+        ]),
+        'male_products_with_active_sellers' => $maleWithActiveSellers->count(),
+    ]);
+});
+
 // Public gold price routes
 Route::get('/gold-price/current', [GoldPriceController::class, 'getCurrentPrice']);
 
