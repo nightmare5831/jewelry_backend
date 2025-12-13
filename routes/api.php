@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\GoldPriceController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\CartController;
@@ -19,6 +20,9 @@ Route::post('/login', [AuthController::class, 'login']);
 // Public product routes
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
+
+// Public review routes
+Route::get('/products/{productId}/reviews', [ReviewController::class, 'index']);
 
 // Debug route - TODO: Remove in production
 Route::get('/debug/products', function () {
@@ -70,6 +74,9 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/products', [ProductController::class, 'store']);
     Route::put('/products/{id}', [ProductController::class, 'update']);
     Route::delete('/products/{id}', [ProductController::class, 'destroy']);
+
+    // Reviews (buyer only)
+    Route::post('/products/{productId}/reviews', [ReviewController::class, 'store']);
 
     // Q&A Messages
     Route::get('/messages', [MessageController::class, 'index']);
