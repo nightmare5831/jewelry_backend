@@ -222,10 +222,16 @@ class PaymentController extends Controller
     public function webhook(Request $request)
     {
         try {
+            Log::info('🔔 Mercado Pago webhook received', [
+                'all_data' => $request->all(),
+                'headers' => $request->headers->all(),
+            ]);
+
             $type = $request->input('type');
 
             // Handle payment notification
             if ($type === 'payment') {
+                Log::info('💳 Processing payment webhook');
                 $paymentId = $request->input('data.id');
 
                 if (!$paymentId) {
@@ -258,8 +264,15 @@ class PaymentController extends Controller
                 }
 
                 // Handle payment status
+                Log::info("💰 Payment status from Mercado Pago: {$mpPayment->status}", [
+                    'payment_id' => $mpPayment->id,
+                    'order_id' => $orderId,
+                    'amount' => $mpPayment->transaction_amount ?? null,
+                ]);
+
                 switch ($mpPayment->status) {
                     case 'approved':
+                        Log::info('✅ Payment APPROVED - updating to completed');
                         $this->handlePaymentSuccess([
                             'id' => $mpPayment->id,
                             'status' => $mpPayment->status,
@@ -269,6 +282,7 @@ class PaymentController extends Controller
 
                     case 'rejected':
                     case 'cancelled':
+                        Log::info('❌ Payment REJECTED/CANCELLED - updating to failed');
                         $this->handlePaymentFailure([
                             'id' => $mpPayment->id,
                             'status' => $mpPayment->status,
@@ -279,7 +293,7 @@ class PaymentController extends Controller
                     case 'pending':
                     case 'in_process':
                         // Payment is still processing, do nothing
-                        Log::info("Payment {$mpPayment->id} is {$mpPayment->status}");
+                        Log::info("⏳ Payment {$mpPayment->id} is {$mpPayment->status}");
                         break;
                 }
             }
