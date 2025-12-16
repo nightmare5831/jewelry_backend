@@ -15,86 +15,6 @@ use MercadoPago\Exceptions\MPApiException;
 
 class PaymentController extends Controller
 {
-    // Test Mercado Pago API connection
-    public function testConnection()
-    {
-        try {
-            $accessToken = config('services.mercadopago.access_token');
-            $publicKey = config('services.mercadopago.public_key');
-
-            // Check if credentials are configured
-            if (!$accessToken || !$publicKey) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Mercado Pago credentials not configured',
-                    'credentials' => [
-                        'access_token' => $accessToken ? 'Set' : 'Missing',
-                        'public_key' => $publicKey ? 'Set' : 'Missing',
-                    ],
-                ], 500);
-            }
-
-            // Initialize SDK v3
-            MercadoPagoConfig::setAccessToken($accessToken);
-
-            // Try to create a test preference using SDK v3
-            $client = new PreferenceClient();
-
-            $preferenceData = [
-                'items' => [
-                    [
-                        'title' => 'Test Connection',
-                        'quantity' => 1,
-                        'currency_id' => 'USD',
-                        'unit_price' => 10.00,
-                    ]
-                ],
-                'back_urls' => [
-                    'success' => config('app.url') . '/test-success',
-                    'failure' => config('app.url') . '/test-failure',
-                    'pending' => config('app.url') . '/test-pending',
-                ],
-                'auto_return' => 'approved',
-            ];
-
-            $preference = $client->create($preferenceData);
-
-            // Detect environment: If sandbox_init_point exists, it's test mode
-            $isSandbox = isset($preference->sandbox_init_point) && $preference->sandbox_init_point !== null;
-
-            // If we get here, the API is working
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Mercado Pago API connection successful!',
-                'sdk_version' => MercadoPagoConfig::$CURRENT_VERSION,
-                'environment' => 'sandbox',
-                'credentials' => [
-                    'access_token' => substr($accessToken, 0, 20) . '...' . substr($accessToken, -10),
-                    'public_key' => substr($publicKey, 0, 20) . '...' . substr($publicKey, -10),
-                ],
-                'test_preference' => [
-                    'id' => $preference->id,
-                    'sandbox_init_point' => $preference->sandbox_init_point ?? null,
-                    'init_point' => $preference->init_point ?? null,
-                ],
-            ]);
-
-        } catch (MPApiException $e) {
-            Log::error('Mercado Pago API Error: ' . $e->getMessage());
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Mercado Pago API error: ' . $e->getMessage(),
-                'error_code' => $e->getCode(),
-            ], 500);
-        } catch (\Exception $e) {
-            Log::error('Mercado Pago connection test failed: ' . $e->getMessage());
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Connection test failed: ' . $e->getMessage(),
-            ], 500);
-        }
-    }
-
     // Create payment with Mercado Pago (SDK v3)
     public function createIntent(Request $request)
     {
@@ -134,25 +54,6 @@ class PaymentController extends Controller
 
             $client = new PreferenceClient();
 
-            // Build payment methods exclusion based on selected method
-            $excludedPaymentTypes = [];
-            if ($payment->payment_method === 'pix') {
-                $excludedPaymentTypes = [
-                    ['id' => 'credit_card'],
-                    ['id' => 'debit_card'],
-                    ['id' => 'ticket'],
-                ];
-            } elseif ($payment->payment_method === 'credit_card') {
-                $excludedPaymentTypes = [
-                    ['id' => 'ticket'],
-                ];
-            } elseif ($payment->payment_method === 'boleto') {
-                $excludedPaymentTypes = [
-                    ['id' => 'credit_card'],
-                    ['id' => 'debit_card'],
-                ];
-            }
-
             // Get buyer information
             $buyer = $order->buyer;
 
@@ -165,7 +66,7 @@ class PaymentController extends Controller
                 'payment_method' => $payment->payment_method,
             ]);
 
-            // Create preference data
+            // Create preference data (credit card only)
             $preferenceData = [
                 'items' => [
                     [
@@ -180,7 +81,9 @@ class PaymentController extends Controller
                     'email' => $buyer->email,
                 ],
                 'payment_methods' => [
-                    'excluded_payment_types' => $excludedPaymentTypes,
+                    'excluded_payment_types' => [
+                        ['id' => 'ticket'], // Exclude boleto
+                    ],
                 ],
                 'external_reference' => (string) $order->id,
                 'metadata' => [
