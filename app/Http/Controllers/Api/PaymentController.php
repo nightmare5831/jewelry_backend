@@ -111,6 +111,7 @@ class PaymentController extends Controller
             ]);
 
             $order = Order::where('buyer_id', $user->id)
+                ->with('buyer')
                 ->findOrFail($request->order_id);
 
             $payment = Payment::where('order_id', $order->id)->firstOrFail();
@@ -152,6 +153,9 @@ class PaymentController extends Controller
                 ];
             }
 
+            // Get buyer information
+            $buyer = $order->buyer;
+
             // Create preference data
             $preferenceData = [
                 'items' => [
@@ -161,6 +165,10 @@ class PaymentController extends Controller
                         'currency_id' => 'BRL',
                         'unit_price' => (float) $payment->amount,
                     ]
+                ],
+                'payer' => [
+                    'name' => $buyer->name,
+                    'email' => $buyer->email,
                 ],
                 'payment_methods' => [
                     'excluded_payment_types' => $excludedPaymentTypes,
@@ -177,6 +185,10 @@ class PaymentController extends Controller
                     'pending' => 'perfectjewel://payment-pending',
                 ],
                 'auto_return' => 'approved',
+                'statement_descriptor' => 'PERFECT JEWEL',
+                'expires' => true,
+                'expiration_date_from' => now()->toIso8601String(),
+                'expiration_date_to' => now()->addHours(24)->toIso8601String(),
             ];
 
             $preference = $client->create($preferenceData);
