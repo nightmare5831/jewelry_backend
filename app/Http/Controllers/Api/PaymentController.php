@@ -170,9 +170,9 @@ class PaymentController extends Controller
                 ],
                 'notification_url' => config('app.url') . '/api/payments/webhook',
                 'back_urls' => [
-                    'success' => config('app.url') . '/payment-success',
-                    'failure' => config('app.url') . '/payment-failure',
-                    'pending' => config('app.url') . '/payment-pending',
+                    'success' => 'perfectjewel://payment-success',
+                    'failure' => 'perfectjewel://payment-failure',
+                    'pending' => 'perfectjewel://payment-pending',
                 ],
                 'auto_return' => 'approved',
             ];
