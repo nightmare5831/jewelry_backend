@@ -45,6 +45,7 @@ class PaymentController extends Controller
                     [
                         'title' => 'Test Connection',
                         'quantity' => 1,
+                        'currency_id' => 'BRL',
                         'unit_price' => 10.00,
                     ]
                 ],
@@ -157,6 +158,7 @@ class PaymentController extends Controller
                     [
                         'title' => "Order #{$order->order_number}",
                         'quantity' => 1,
+                        'currency_id' => 'BRL',
                         'unit_price' => (float) $payment->amount,
                     ]
                 ],

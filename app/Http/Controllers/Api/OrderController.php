@@ -41,6 +41,107 @@ class OrderController extends Controller
         return response()->json($order);
     }
 
+    // Buyer: Buy now - Create order directly from product (skip cart)
+    public function buyNow(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'product_id' => 'required|exists:products,id',
+            'quantity' => 'required|integer|min:1',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $user = Auth::user();
+        $product = Product::findOrFail($request->product_id);
+
+        // Validate product availability
+        if ($product->status !== 'approved' || !$product->is_active) {
+            return response()->json([
+                'error' => 'Product is not available for purchase'
+            ], 400);
+        }
+
+        if ($product->stock_quantity < $request->quantity) {
+            return response()->json([
+                'error' => 'Insufficient stock available'
+            ], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Calculate totals
+            $unitPrice = $product->current_price ?? $product->base_price;
+            $subtotal = $unitPrice * $request->quantity;
+            $shippingAmount = 0; // Can be calculated based on logic
+            $taxAmount = 0; // Can be calculated based on logic
+            $totalAmount = $subtotal + $shippingAmount + $taxAmount;
+
+            // Create order with pending status (no shipping address yet)
+            $order = Order::create([
+                'buyer_id' => $user->id,
+                'status' => 'pending',
+                'total_amount' => $totalAmount,
+                'tax_amount' => $taxAmount,
+                'shipping_amount' => $shippingAmount,
+                'shipping_address' => null, // Will be added during checkout
+                'stock_reserved' => true,
+                'reserved_until' => now()->addHours(24),
+            ]);
+
+            // Create order item
+            OrderItem::create([
+                'order_id' => $order->id,
+                'product_id' => $product->id,
+                'seller_id' => $product->seller_id,
+                'quantity' => $request->quantity,
+                'unit_price' => $unitPrice,
+                'total_price' => $subtotal,
+            ]);
+
+            // Decrease stock
+            $product->decrement('stock_quantity', $request->quantity);
+
+            // Create payment record with default payment method
+            $payment = Payment::create([
+                'order_id' => $order->id,
+                'payment_method' => 'pix', // Default, can be changed later
+                'amount' => $totalAmount,
+                'status' => 'pending',
+            ]);
+
+            DB::commit();
+
+            // Load relationships
+            $order->load(['items.product', 'items.seller', 'payment']);
+
+            return response()->json([
+                'message' => 'Order created successfully',
+                'order' => $order,
+                'payment' => $payment,
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Buy now order creation failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => $user->id,
+                'product_id' => $request->product_id,
+                'line' => $e->getLine(),
+                'file' => $e->getFile(),
+            ]);
+            return response()->json([
+                'error' => 'Failed to create order: ' . $e->getMessage(),
+                'details' => config('app.debug') ? [
+                    'line' => $e->getLine(),
+                    'file' => basename($e->getFile()),
+                ] : null
+            ], 500);
+        }
+    }
+
     // Buyer: Create order from cart
     public function store(Request $request)
     {
