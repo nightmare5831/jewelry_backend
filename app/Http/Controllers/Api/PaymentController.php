@@ -79,12 +79,21 @@ class PaymentController extends Controller
                 'payer' => [
                     'name' => $buyer->name,
                     'email' => $buyer->email,
-                ],
-                'payment_methods' => [
-                    'excluded_payment_types' => [
-                        ['id' => 'ticket'], // Exclude boleto
+                    'identification' => [
+                        'type' => 'CPF',
+                        'number' => '12345678909' // Test CPF for sandbox
                     ],
                 ],
+                'payment_methods' => [
+                    'installments' => 12, // Maximum installments allowed
+                    'default_installments' => 1, // Default to 1 installment
+                    'excluded_payment_types' => [
+                        ['id' => 'ticket'],      // Exclude boleto
+                        ['id' => 'atm'],         // Exclude bank debit
+                        ['id' => 'debit_card'],  // Exclude debit cards
+                    ],
+                ],
+                'binary_mode' => false, // Allow pending payments
                 'external_reference' => (string) $order->id,
                 'metadata' => [
                     'order_id' => $order->id,
@@ -100,7 +109,10 @@ class PaymentController extends Controller
                 'statement_descriptor' => 'PERFECT JEWEL',
             ];
 
-            Log::info('Sending preference to MercadoPago', ['preference_data' => $preferenceData]);
+            Log::info('Sending preference to MercadoPago', [
+                'preference_data' => $preferenceData,
+                'access_token_prefix' => substr($accessToken, 0, 20),
+            ]);
 
             $preference = $client->create($preferenceData);
 
