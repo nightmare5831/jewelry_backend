@@ -45,7 +45,7 @@ class PaymentController extends Controller
                     [
                         'title' => 'Test Connection',
                         'quantity' => 1,
-                        'currency_id' => 'BRL',
+                        'currency_id' => 'USD',
                         'unit_price' => 10.00,
                     ]
                 ],
@@ -67,7 +67,7 @@ class PaymentController extends Controller
                 'status' => 'success',
                 'message' => 'Mercado Pago API connection successful!',
                 'sdk_version' => MercadoPagoConfig::$CURRENT_VERSION,
-                'environment' => $isSandbox ? 'sandbox' : 'production',
+                'environment' => 'sandbox',
                 'credentials' => [
                     'access_token' => substr($accessToken, 0, 20) . '...' . substr($accessToken, -10),
                     'public_key' => substr($publicKey, 0, 20) . '...' . substr($publicKey, -10),
