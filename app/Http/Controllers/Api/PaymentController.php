@@ -156,6 +156,15 @@ class PaymentController extends Controller
             // Get buyer information
             $buyer = $order->buyer;
 
+            Log::info('MercadoPago preference data preparation', [
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'buyer_name' => $buyer->name,
+                'buyer_email' => $buyer->email,
+                'amount' => $payment->amount,
+                'payment_method' => $payment->payment_method,
+            ]);
+
             // Create preference data
             $preferenceData = [
                 'items' => [
@@ -186,12 +195,17 @@ class PaymentController extends Controller
                 ],
                 'auto_return' => 'approved',
                 'statement_descriptor' => 'PERFECT JEWEL',
-                'expires' => true,
-                'expiration_date_from' => now()->toIso8601String(),
-                'expiration_date_to' => now()->addHours(24)->toIso8601String(),
             ];
 
+            Log::info('Sending preference to MercadoPago', ['preference_data' => $preferenceData]);
+
             $preference = $client->create($preferenceData);
+
+            Log::info('MercadoPago preference response', [
+                'preference_id' => $preference->id,
+                'init_point' => $preference->init_point ?? 'null',
+                'sandbox_init_point' => $preference->sandbox_init_point ?? 'null',
+            ]);
 
             $payment->update([
                 'transaction_id' => $preference->id,
