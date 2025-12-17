@@ -53,7 +53,15 @@ class UploadController extends Controller
         // Generate unique filename
         $extension = $file->getClientOriginalExtension();
         $filename = Str::uuid() . '.' . $extension;
-        $path = "{$type}s/{$filename}";
+
+        // Map type to directory name
+        $directory = match($type) {
+            'image' => 'image',
+            'video' => 'video',
+            '3d_model' => '3d',
+        };
+
+        $path = "{$directory}/{$filename}";
 
         // Upload to R2
         $uploaded = Storage::disk('r2')->put($path, file_get_contents($file->getRealPath()), 'public');
