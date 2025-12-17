@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\WishlistController;
 use App\Http\Controllers\Api\SellerController;
+use App\Http\Controllers\Api\UploadController;
 
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
@@ -94,5 +95,11 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/add', [WishlistController::class, 'add']);
         Route::delete('/{productId}', [WishlistController::class, 'remove']);
         Route::post('/clear', [WishlistController::class, 'clear']);
+    });
+
+    // File upload routes
+    Route::prefix('upload')->group(function () {
+        Route::post('/r2', [UploadController::class, 'upload']);
+        Route::delete('/r2/{key}', [UploadController::class, 'delete'])->where('key', '.*');
     });
 });
