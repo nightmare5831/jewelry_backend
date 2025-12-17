@@ -63,6 +63,7 @@ Route::middleware('auth:api')->group(function () {
     // Order routes (Buyer)
     Route::prefix('orders')->group(function () {
         Route::get('/', [OrderController::class, 'index']);
+        Route::get('/purchased-products', [OrderController::class, 'purchasedProducts']);
         Route::get('/{id}', [OrderController::class, 'show']);
         Route::post('/', [OrderController::class, 'store']);
         Route::post('/{id}/cancel', [OrderController::class, 'cancel']);
