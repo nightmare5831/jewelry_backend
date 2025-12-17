@@ -81,7 +81,7 @@ class PaymentController extends Controller
                     'email' => $buyer->email,
                     'identification' => [
                         'type' => 'CPF',
-                        'number' => '12345678909' // Test CPF for sandbox
+                        'number' => '12345678901' // Valid test CPF for sandbox
                     ],
                 ],
                 'payment_methods' => [
