@@ -10,15 +10,21 @@ use Illuminate\Support\Str;
 class UploadController extends Controller
 {
     private const MAX_FILE_SIZES = [
-        'image' => 50 * 1024 * 1024,      // 50MB
-        'video' => 200 * 1024 * 1024,     // 200MB
-        '3d_model' => 100 * 1024 * 1024,  // 100MB
+        'image' => 10 * 1024 * 1024,      // 10MB
+        'video' => 15 * 1024 * 1024,      // 15MB
+        '3d_model' => 20 * 1024 * 1024,   // 20MB
     ];
 
     private const ALLOWED_MIMES = [
         'image' => ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'],
-        'video' => ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm'],
-        '3d_model' => ['model/gltf-binary', 'model/gltf+json', 'model/obj', 'application/octet-stream'],
+        'video' => ['video/mp4', 'video/quicktime', 'video/webm'],
+        '3d_model' => ['model/gltf-binary', 'application/octet-stream'], // GLB files only for now
+    ];
+
+    private const ALLOWED_EXTENSIONS = [
+        'image' => ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+        'video' => ['mp4', 'mov', 'webm'],
+        '3d_model' => ['glb'], // GLB only - supported by Model3DViewer
     ];
 
     /**
@@ -73,9 +79,17 @@ class UploadController extends Controller
                     'video/quicktime' => 'mov',
                     'video/webm' => 'webm',
                     'model/gltf-binary' => 'glb',
-                    'model/gltf+json' => 'gltf',
                     default => 'bin',
                 };
+            }
+
+            // Validate extension against allowed list
+            if (!in_array(strtolower($extension), self::ALLOWED_EXTENSIONS[$type])) {
+                return response()->json([
+                    'message' => 'Invalid file extension',
+                    'allowed_extensions' => self::ALLOWED_EXTENSIONS[$type],
+                    'received_extension' => $extension,
+                ], 422);
             }
 
             $filename = Str::uuid() . '.' . $extension;
