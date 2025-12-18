@@ -49,6 +49,7 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/products/{productId}/reviews', [ReviewController::class, 'store']);
 
     // Q&A Messages (protected)
+    Route::get('/messages/my-questions', [MessageController::class, 'myQuestions']);
     Route::post('/messages', [MessageController::class, 'store']);
     Route::post('/messages/{id}/answer', [MessageController::class, 'answer']);
     Route::delete('/messages/{id}', [MessageController::class, 'destroy']);
