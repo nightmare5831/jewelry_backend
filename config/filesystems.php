@@ -69,8 +69,8 @@ return [
             'endpoint' => env('R2_ENDPOINT'),
             'url' => env('R2_PUBLIC_URL'),
             'use_path_style_endpoint' => false,
-            'throw' => false,
-            'report' => false,
+            'throw' => true,  // Enable exceptions for debugging
+            'report' => true, // Enable error reporting
         ],
 
     ],

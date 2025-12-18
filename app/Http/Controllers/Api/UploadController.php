@@ -104,17 +104,40 @@ class UploadController extends Controller
             $path = "{$directory}/{$filename}";
 
             // Upload to R2
-            \Log::info('Attempting R2 upload', ['path' => $path]);
+            \Log::info('Attempting R2 upload', [
+                'path' => $path,
+                'file_size' => $file->getSize(),
+                'r2_config' => [
+                    'bucket' => config('filesystems.disks.r2.bucket'),
+                    'endpoint' => config('filesystems.disks.r2.endpoint'),
+                    'has_key' => !empty(config('filesystems.disks.r2.key')),
+                    'has_secret' => !empty(config('filesystems.disks.r2.secret')),
+                ]
+            ]);
 
-            $uploaded = Storage::disk('r2')->put($path, file_get_contents($file->getRealPath()), 'public');
+            try {
+                $fileContent = file_get_contents($file->getRealPath());
+                \Log::info('File content read', ['content_length' => strlen($fileContent)]);
 
-            if (!$uploaded) {
-                \Log::error('R2 upload failed', ['path' => $path]);
-                return response()->json(['message' => 'Upload failed'], 500);
+                $uploaded = Storage::disk('r2')->put($path, $fileContent, 'public');
+
+                if (!$uploaded) {
+                    \Log::error('R2 upload returned false', ['path' => $path]);
+                    return response()->json(['message' => 'Upload to R2 failed'], 500);
+                }
+
+                $url = Storage::disk('r2')->url($path);
+                \Log::info('Upload successful', ['url' => $url, 'path' => $path]);
+            } catch (\Exception $uploadException) {
+                \Log::error('R2 upload exception', [
+                    'path' => $path,
+                    'error' => $uploadException->getMessage(),
+                    'trace' => $uploadException->getTraceAsString(),
+                ]);
+                return response()->json([
+                    'message' => 'R2 upload error: ' . $uploadException->getMessage()
+                ], 500);
             }
-
-            $url = Storage::disk('r2')->url($path);
-            \Log::info('Upload successful', ['url' => $url]);
 
             return response()->json([
                 'url' => $url,
