@@ -119,7 +119,8 @@ class UploadController extends Controller
                 $fileContent = file_get_contents($file->getRealPath());
                 \Log::info('File content read', ['content_length' => strlen($fileContent)]);
 
-                $uploaded = Storage::disk('r2')->put($path, $fileContent, 'public');
+                // R2 doesn't use ACL headers - visibility is managed at bucket level
+                $uploaded = Storage::disk('r2')->put($path, $fileContent);
 
                 if (!$uploaded) {
                     \Log::error('R2 upload returned false', ['path' => $path]);
