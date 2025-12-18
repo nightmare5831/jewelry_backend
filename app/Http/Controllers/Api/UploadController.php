@@ -26,55 +26,97 @@ class UploadController extends Controller
      */
     public function upload(Request $request)
     {
-        $request->validate([
-            'file' => 'required|file',
-            'type' => 'required|in:image,video,3d_model',
-        ]);
+        try {
+            $request->validate([
+                'file' => 'required|file',
+                'type' => 'required|in:image,video,3d_model',
+            ]);
 
-        $file = $request->file('file');
-        $type = $request->input('type');
+            $file = $request->file('file');
+            $type = $request->input('type');
 
-        // Validate file size
-        if ($file->getSize() > self::MAX_FILE_SIZES[$type]) {
+            \Log::info('Upload request', [
+                'type' => $type,
+                'mime' => $file->getMimeType(),
+                'size' => $file->getSize(),
+                'original_name' => $file->getClientOriginalName(),
+            ]);
+
+            // Validate file size
+            if ($file->getSize() > self::MAX_FILE_SIZES[$type]) {
+                return response()->json([
+                    'message' => 'File size exceeds maximum allowed size',
+                    'max_size' => $this->formatBytes(self::MAX_FILE_SIZES[$type]),
+                ], 413);
+            }
+
+            // Validate MIME type
+            if (!in_array($file->getMimeType(), self::ALLOWED_MIMES[$type])) {
+                return response()->json([
+                    'message' => 'Invalid file type',
+                    'allowed_types' => self::ALLOWED_MIMES[$type],
+                    'received_type' => $file->getMimeType(),
+                ], 422);
+            }
+
+            // Generate unique filename
+            $extension = $file->getClientOriginalExtension();
+
+            // If no extension, derive from MIME type
+            if (!$extension) {
+                $extension = match($file->getMimeType()) {
+                    'image/jpeg', 'image/jpg' => 'jpg',
+                    'image/png' => 'png',
+                    'image/gif' => 'gif',
+                    'image/webp' => 'webp',
+                    'video/mp4' => 'mp4',
+                    'video/quicktime' => 'mov',
+                    'video/webm' => 'webm',
+                    'model/gltf-binary' => 'glb',
+                    'model/gltf+json' => 'gltf',
+                    default => 'bin',
+                };
+            }
+
+            $filename = Str::uuid() . '.' . $extension;
+
+            // Map type to directory name
+            $directory = match($type) {
+                'image' => 'images',
+                'video' => 'videos',
+                '3d_model' => '3d_models',
+            };
+
+            $path = "{$directory}/{$filename}";
+
+            // Upload to R2
+            \Log::info('Attempting R2 upload', ['path' => $path]);
+
+            $uploaded = Storage::disk('r2')->put($path, file_get_contents($file->getRealPath()), 'public');
+
+            if (!$uploaded) {
+                \Log::error('R2 upload failed', ['path' => $path]);
+                return response()->json(['message' => 'Upload failed'], 500);
+            }
+
+            $url = Storage::disk('r2')->url($path);
+            \Log::info('Upload successful', ['url' => $url]);
+
             return response()->json([
-                'message' => 'File size exceeds maximum allowed size',
-                'max_size' => $this->formatBytes(self::MAX_FILE_SIZES[$type]),
-            ], 413);
-        }
+                'url' => $url,
+                'key' => $path,
+                'type' => $type,
+            ], 201);
+        } catch (\Exception $e) {
+            \Log::error('Upload error', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
 
-        // Validate MIME type
-        if (!in_array($file->getMimeType(), self::ALLOWED_MIMES[$type])) {
             return response()->json([
-                'message' => 'Invalid file type',
-                'allowed_types' => self::ALLOWED_MIMES[$type],
-            ], 422);
+                'message' => 'Upload failed: ' . $e->getMessage(),
+            ], 500);
         }
-
-        // Generate unique filename
-        $extension = $file->getClientOriginalExtension();
-        $filename = Str::uuid() . '.' . $extension;
-
-        // Map type to directory name
-        $directory = match($type) {
-            'image' => 'image',
-            'video' => 'video',
-            '3d_model' => '3d',
-        };
-
-        $path = "{$directory}/{$filename}";
-
-        // Upload to R2
-        $uploaded = Storage::disk('r2')->put($path, file_get_contents($file->getRealPath()), 'public');
-
-        if (!$uploaded) {
-            return response()->json(['message' => 'Upload failed'], 500);
-        }
-
-        return response()->json([
-            'url' => Storage::disk('r2')->url($path),
-            'key' => $path,
-            'type' => $type,
-        ], 201);
     }
 
     /**
