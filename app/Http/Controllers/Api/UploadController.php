@@ -41,13 +41,6 @@ class UploadController extends Controller
             $file = $request->file('file');
             $type = $request->input('type');
 
-            \Log::info('Upload request', [
-                'type' => $type,
-                'mime' => $file->getMimeType(),
-                'size' => $file->getSize(),
-                'original_name' => $file->getClientOriginalName(),
-            ]);
-
             // Validate file size
             if ($file->getSize() > self::MAX_FILE_SIZES[$type]) {
                 return response()->json([
@@ -94,47 +87,24 @@ class UploadController extends Controller
 
             $filename = Str::uuid() . '.' . $extension;
 
-            // Map type to directory name
             $directory = match($type) {
-                'image' => 'images',
-                'video' => 'videos',
-                '3d_model' => '3d_models',
+                'image' => 'image',
+                'video' => 'video',
+                '3d_model' => '3d',
             };
 
             $path = "{$directory}/{$filename}";
 
-            // Upload to R2
-            \Log::info('Attempting R2 upload', [
-                'path' => $path,
-                'file_size' => $file->getSize(),
-                'r2_config' => [
-                    'bucket' => config('filesystems.disks.r2.bucket'),
-                    'endpoint' => config('filesystems.disks.r2.endpoint'),
-                    'has_key' => !empty(config('filesystems.disks.r2.key')),
-                    'has_secret' => !empty(config('filesystems.disks.r2.secret')),
-                ]
-            ]);
-
             try {
                 $fileContent = file_get_contents($file->getRealPath());
-                \Log::info('File content read', ['content_length' => strlen($fileContent)]);
-
-                // R2 doesn't use ACL headers - visibility is managed at bucket level
                 $uploaded = Storage::disk('r2')->put($path, $fileContent);
 
                 if (!$uploaded) {
-                    \Log::error('R2 upload returned false', ['path' => $path]);
                     return response()->json(['message' => 'Upload to R2 failed'], 500);
                 }
 
                 $url = Storage::disk('r2')->url($path);
-                \Log::info('Upload successful', ['url' => $url, 'path' => $path]);
             } catch (\Exception $uploadException) {
-                \Log::error('R2 upload exception', [
-                    'path' => $path,
-                    'error' => $uploadException->getMessage(),
-                    'trace' => $uploadException->getTraceAsString(),
-                ]);
                 return response()->json([
                     'message' => 'R2 upload error: ' . $uploadException->getMessage()
                 ], 500);
@@ -146,11 +116,6 @@ class UploadController extends Controller
                 'type' => $type,
             ], 201);
         } catch (\Exception $e) {
-            \Log::error('Upload error', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
             return response()->json([
                 'message' => 'Upload failed: ' . $e->getMessage(),
             ], 500);
