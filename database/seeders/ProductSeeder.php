@@ -58,7 +58,7 @@ class ProductSeeder extends Seeder
                 'filling' => $fillingOptions[array_rand($fillingOptions)],
                 'is_gemstone' => $gemstoneOptions[array_rand($gemstoneOptions)],
                 'images' => json_encode($images),
-                // Use GitHub raw URL for 3D model files (no CORS issues)
+                'videos' => json_encode(['https://raw.githubusercontent.com/nightmare5831/jewelry_backend/main/public/bandi.mp4']),
                 'model_3d_url' => 'https://raw.githubusercontent.com/nightmare5831/jewelry_backend/main/public/jewelry.glb',
                 'model_3d_type' => 'glb',
                 'stock_quantity' => rand(5, 50),
