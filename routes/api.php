@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\WishlistController;
 use App\Http\Controllers\Api\SellerController;
+use App\Http\Controllers\Api\SellerSettingsController;
 use App\Http\Controllers\Api\UploadController;
 
 // Public routes
@@ -84,6 +85,10 @@ Route::middleware('auth:api')->group(function () {
         // Orders
         Route::get('/orders', [SellerController::class, 'orders']);
         Route::patch('/orders/{id}/ship', [OrderController::class, 'markAsShipped']);
+
+        // Mercado Pago Settings
+        Route::post('/mercadopago', [SellerSettingsController::class, 'updateMercadoPago']);
+        Route::get('/mercadopago', [SellerSettingsController::class, 'getMercadoPagoStatus']);
     });
 
     // Payment routes

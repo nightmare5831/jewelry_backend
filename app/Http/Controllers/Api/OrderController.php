@@ -105,13 +105,19 @@ class OrderController extends Controller
 
         DB::beginTransaction();
         try {
-            // Calculate totals for selected items only
-            $subtotal = $itemsToProcess->sum(function ($item) {
+            // Calculate product total (seller receives this amount)
+            $productTotal = $itemsToProcess->sum(function ($item) {
                 return $item->price_at_time_of_add * $item->quantity;
             });
             $shippingAmount = 0; // Can be calculated based on logic
             $taxAmount = 0; // Can be calculated based on logic
-            $totalAmount = $subtotal + $shippingAmount + $taxAmount;
+
+            // Platform fee: 10% default (will be adjusted based on payment method)
+            $platformFeeRate = 0.10;
+            $platformFee = round($productTotal * $platformFeeRate, 2);
+
+            // Total amount customer pays
+            $totalAmount = $productTotal + $platformFee + $shippingAmount + $taxAmount;
 
             // Create order with stock reservation (24 hour timeout)
             $order = Order::create([
@@ -140,11 +146,13 @@ class OrderController extends Controller
                 $cartItem->product->decrement('stock_quantity', $cartItem->quantity);
             }
 
-            // Create payment record (credit_card only)
+            // Create payment record with platform fee
             $payment = Payment::create([
                 'order_id' => $order->id,
-                'payment_method' => 'credit_card',
+                'payment_method' => $request->payment_method ?? 'credit_card',
                 'amount' => $totalAmount,
+                'product_amount' => $productTotal,
+                'platform_fee' => $platformFee,
                 'status' => 'pending',
             ]);
 

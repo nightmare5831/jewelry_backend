@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
+use App\Models\PaymentSplit;
 use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -38,6 +39,40 @@ class PaymentController extends Controller
 
             if ($payment->status !== 'pending') {
                 return response()->json(['error' => 'Payment already processed'], 400);
+            }
+
+            // Recalculate platform fee based on payment method
+            $productAmount = $payment->product_amount;
+            $paymentMethod = $payment->payment_method;
+
+            // Fee rates: PIX 8%, Credit Card 10%
+            $feeRate = ($paymentMethod === 'pix') ? 0.08 : 0.10;
+            $platformFee = round($productAmount * $feeRate, 2);
+            $totalAmount = $productAmount + $platformFee;
+
+            // Update payment with correct fee and amount
+            $payment->update([
+                'platform_fee' => $platformFee,
+                'amount' => $totalAmount,
+            ]);
+
+            // Group order items by seller and calculate split amounts
+            $order->load('items.seller');
+            $sellerAmounts = $order->items->groupBy('seller_id')->map(function ($items, $sellerId) {
+                return [
+                    'seller' => $items->first()->seller,
+                    'amount' => $items->sum('total_price'),
+                ];
+            });
+
+            // Create payment split records (seller email used for MP account)
+            foreach ($sellerAmounts as $sellerId => $data) {
+                PaymentSplit::create([
+                    'payment_id' => $payment->id,
+                    'seller_id' => $sellerId,
+                    'amount' => $data['amount'],
+                    'status' => 'pending',
+                ]);
             }
 
             // Initialize Mercado Pago SDK v3
@@ -86,7 +121,7 @@ class PaymentController extends Controller
                     'excluded_payment_types' => [
                         ['id' => 'ticket'],      // Exclude boleto
                         ['id' => 'atm'],         // Exclude bank debit
-                        ['id' => 'debit_card'],  // Exclude debit cards
+                        // PIX and credit_card both enabled
                     ],
                 ],
                 'binary_mode' => false, // Allow pending payments
@@ -103,6 +138,17 @@ class PaymentController extends Controller
                 ],
                 'auto_return' => 'approved',
                 'statement_descriptor' => 'PERFECT JEWEL',
+
+                // Marketplace split payments (uses seller's email as MP account)
+                'disbursements' => $sellerAmounts->map(function ($data, $sellerId) {
+                    return [
+                        'amount' => (float) $data['amount'],
+                        'external_reference' => "seller_{$sellerId}",
+                        'collector_id' => $data['seller']->email, // Use seller's email
+                    ];
+                })->values()->toArray(),
+
+                'marketplace_fee' => (float) $platformFee,
             ];
 
             Log::info('Sending preference to MercadoPago', [

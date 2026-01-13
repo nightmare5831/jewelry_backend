@@ -36,8 +36,9 @@ class SellerSeeder extends Seeder
                 'password' => Hash::make('password123'),
                 'role' => 'seller',
                 'seller_status' => 'approved',
-                'seller_approved' => true, 
+                'seller_approved' => true,
                 'seller_approved_at' => now(),
+                'mercadopago_connected' => true,
                 'is_active' => true,
             ]);
         }

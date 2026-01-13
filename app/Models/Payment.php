@@ -10,6 +10,8 @@ class Payment extends Model
         'order_id',
         'payment_method',
         'amount',
+        'product_amount',
+        'platform_fee',
         'status',
         'transaction_id',
         'gateway_response',
@@ -18,6 +20,8 @@ class Payment extends Model
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'product_amount' => 'decimal:2',
+        'platform_fee' => 'decimal:2',
         'gateway_response' => 'json',
         'paid_at' => 'datetime',
     ];
@@ -25,6 +29,11 @@ class Payment extends Model
     public function order()
     {
         return $this->belongsTo(Order::class);
+    }
+
+    public function splits()
+    {
+        return $this->hasMany(PaymentSplit::class);
     }
 
     public function markAsCompleted($transactionId = null, $gatewayResponse = null)
