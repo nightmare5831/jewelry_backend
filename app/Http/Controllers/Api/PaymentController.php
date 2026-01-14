@@ -116,12 +116,11 @@ class PaymentController extends Controller
                     'email' => $buyer->email,
                 ],
                 'payment_methods' => [
-                    'installments' => 12, // Maximum installments allowed
-                    'default_installments' => 1, // Default to 1 installment
-                    'excluded_payment_types' => [
-                        ['id' => 'ticket'],      // Exclude boleto
-                        ['id' => 'atm'],         // Exclude bank debit
-                        // PIX and credit_card both enabled
+                    'installments' => 12,
+                    'default_installments' => 1,
+                    'included_payment_types' => [
+                        ['id' => 'credit_card'],
+                        ['id' => 'bank_transfer'], // PIX
                     ],
                 ],
                 'binary_mode' => false, // Allow pending payments
