@@ -8,15 +8,14 @@ use App\Models\PaymentSplit;
 use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use MercadoPago\MercadoPagoConfig;
-use MercadoPago\Client\Preference\PreferenceClient;
-use MercadoPago\Client\Payment\PaymentClient;
-use MercadoPago\Exceptions\MPApiException;
 
 class PaymentController extends Controller
 {
-    // Create payment with Mercado Pago (SDK v3)
+    /**
+     * Create payment - Platform receives all, then auto-splits to sellers
+     */
     public function createIntent(Request $request)
     {
         try {
@@ -25,14 +24,8 @@ class PaymentController extends Controller
             ]);
 
             $user = Auth::user();
-
-            Log::info('Creating payment intent', [
-                'user_id' => $user->id,
-                'order_id' => $request->order_id,
-            ]);
-
             $order = Order::where('buyer_id', $user->id)
-                ->with('buyer')
+                ->with(['buyer', 'items.seller', 'items.product'])
                 ->findOrFail($request->order_id);
 
             $payment = Payment::where('order_id', $order->id)->firstOrFail();
@@ -41,76 +34,43 @@ class PaymentController extends Controller
                 return response()->json(['error' => 'Payment already processed'], 400);
             }
 
-            // Recalculate platform fee based on payment method
+            // Calculate fees: PIX 8%, Credit Card 10%
             $productAmount = $payment->product_amount;
-            $paymentMethod = $payment->payment_method;
-
-            // Fee rates: PIX 8%, Credit Card 10%
-            $feeRate = ($paymentMethod === 'pix') ? 0.08 : 0.10;
+            $feeRate = ($payment->payment_method === 'pix') ? 0.08 : 0.10;
             $platformFee = round($productAmount * $feeRate, 2);
             $totalAmount = $productAmount + $platformFee;
 
-            // Update payment with correct fee and amount
             $payment->update([
                 'platform_fee' => $platformFee,
                 'amount' => $totalAmount,
             ]);
 
-            // Group order items by seller and calculate split amounts
-            $order->load('items.seller');
-            $sellerAmounts = $order->items->groupBy('seller_id')->map(function ($items, $sellerId) {
-                return [
-                    'seller' => $items->first()->seller,
-                    'amount' => $items->sum('total_price'),
-                ];
-            });
+            // Group items by seller and create split records
+            $sellerGroups = $order->items->groupBy('seller_id');
+            foreach ($sellerGroups as $sellerId => $items) {
+                $seller = $items->first()->seller;
+                $sellerAmount = $items->sum('total_price');
 
-            // Create payment split records (seller email used for MP account)
-            foreach ($sellerAmounts as $sellerId => $data) {
-                PaymentSplit::create([
-                    'payment_id' => $payment->id,
-                    'seller_id' => $sellerId,
-                    'amount' => $data['amount'],
-                    'status' => 'pending',
-                ]);
+                PaymentSplit::updateOrCreate(
+                    ['payment_id' => $payment->id, 'seller_id' => $sellerId],
+                    [
+                        'amount' => $sellerAmount,
+                        'status' => 'pending',
+                    ]
+                );
             }
 
-            // Initialize Mercado Pago SDK v3
+            // Create preference using PLATFORM's access token
             $accessToken = config('services.mercadopago.access_token');
-
-            if (!$accessToken) {
-                Log::error('Mercado Pago access token not configured');
-                return response()->json([
-                    'message' => 'Payment gateway not configured. Please contact support.'
-                ], 500);
-            }
-
-            MercadoPagoConfig::setAccessToken($accessToken);
-
-            $client = new PreferenceClient();
-
-            // Get buyer information
             $buyer = $order->buyer;
 
-            Log::info('MercadoPago preference data preparation', [
-                'order_id' => $order->id,
-                'order_number' => $order->order_number,
-                'buyer_name' => $buyer->name,
-                'buyer_email' => $buyer->email,
-                'amount' => $payment->amount,
-                'payment_method' => $payment->payment_method,
-            ]);
-
-            // Create preference data (credit card only)
             $preferenceData = [
-                'items' => [
-                    [
-                        'title' => "Order #{$order->order_number}",
-                        'quantity' => 1,
-                        'currency_id' => 'BRL',
-                        'unit_price' => (float) $payment->amount,
-                    ]
-                ],
+                'items' => [[
+                    'title' => "Order #{$order->order_number}",
+                    'quantity' => 1,
+                    'currency_id' => 'BRL',
+                    'unit_price' => (float) $totalAmount,
+                ]],
                 'payer' => [
                     'name' => $buyer->name,
                     'email' => $buyer->email,
@@ -126,7 +86,6 @@ class PaymentController extends Controller
                         ['id' => 'digital_wallet'],
                     ],
                 ],
-                'binary_mode' => false, // Allow pending payments
                 'external_reference' => (string) $order->id,
                 'metadata' => [
                     'order_id' => $order->id,
@@ -139,217 +98,214 @@ class PaymentController extends Controller
                     'pending' => 'perfectjewel://payment-pending',
                 ],
                 'auto_return' => 'approved',
-                'statement_descriptor' => 'PERFECT JEWEL',
-
-                // Marketplace split payments (uses seller's email as MP account)
-                'disbursements' => $sellerAmounts->map(function ($data, $sellerId) {
-                    return [
-                        'amount' => (float) $data['amount'],
-                        'external_reference' => "seller_{$sellerId}",
-                        'collector_id' => $data['seller']->email, // Use seller's email
-                    ];
-                })->values()->toArray(),
-
-                'marketplace_fee' => (float) $platformFee,
+                'statement_descriptor' => 'ALIANCA NOBRE',
             ];
 
-            Log::info('Sending preference to MercadoPago', [
-                'preference_data' => $preferenceData,
-                'access_token_prefix' => substr($accessToken, 0, 20),
-            ]);
+            $response = Http::withToken($accessToken)
+                ->post('https://api.mercadopago.com/checkout/preferences', $preferenceData);
 
-            $preference = $client->create($preferenceData);
+            if (!$response->successful()) {
+                Log::error('MercadoPago preference failed', ['response' => $response->json()]);
+                return response()->json(['message' => 'Failed to create payment'], 500);
+            }
 
-            Log::info('MercadoPago preference response', [
-                'preference_id' => $preference->id,
-                'init_point' => $preference->init_point ?? 'null',
-                'sandbox_init_point' => $preference->sandbox_init_point ?? 'null',
-            ]);
+            $preference = $response->json();
 
             $payment->update([
-                'transaction_id' => $preference->id,
-                'gateway_response' => [
-                    'preference_id' => $preference->id,
-                    'init_point' => $preference->init_point,
-                    'sandbox_init_point' => $preference->sandbox_init_point,
-                ],
+                'transaction_id' => $preference['id'],
+                'gateway_response' => $preference,
+            ]);
+
+            Log::info('Payment preference created', [
+                'preference_id' => $preference['id'],
+                'order_id' => $order->id,
+                'total' => $totalAmount,
+                'platform_fee' => $platformFee,
+                'sellers' => $sellerGroups->keys()->toArray(),
             ]);
 
             return response()->json([
-                'preference_id' => $preference->id,
-                'init_point' => $preference->init_point,
-                'sandbox_init_point' => $preference->sandbox_init_point,
+                'preference_id' => $preference['id'],
+                'init_point' => $preference['init_point'],
                 'payment' => $payment,
             ]);
 
-        } catch (MPApiException $e) {
-            Log::error('Mercado Pago payment creation failed', [
-                'message' => $e->getMessage(),
-                'order_id' => $order->id ?? null,
-                'trace' => $e->getTraceAsString(),
-            ]);
-            return response()->json([
-                'message' => 'Failed to create payment: ' . $e->getMessage()
-            ], 500);
         } catch (\Exception $e) {
             Log::error('Payment creation failed', [
                 'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString(),
             ]);
             return response()->json([
-                'message' => 'Server Error',
-                'error' => config('app.debug') ? $e->getMessage() : 'An error occurred while processing your payment'
+                'message' => 'Failed to create payment',
+                'error' => config('app.debug') ? $e->getMessage() : null,
             ], 500);
         }
     }
 
-    // Mercado Pago webhook handler (IPN) - SDK v3
+    /**
+     * Webhook handler - Process payment and auto-transfer to sellers
+     */
     public function webhook(Request $request)
     {
         try {
-            Log::info('🔔 Mercado Pago webhook received', [
-                'all_data' => $request->all(),
-                'headers' => $request->headers->all(),
-            ]);
+            Log::info('MercadoPago webhook received', ['data' => $request->all()]);
 
-            $type = $request->input('type');
+            if ($request->input('type') !== 'payment') {
+                return response()->json(['status' => 'ignored']);
+            }
 
-            // Handle payment notification
-            if ($type === 'payment') {
-                Log::info('💳 Processing payment webhook');
-                $paymentId = $request->input('data.id');
+            $mpPaymentId = $request->input('data.id');
+            if (!$mpPaymentId) {
+                return response()->json(['status' => 'error'], 400);
+            }
 
-                if (!$paymentId) {
-                    return response()->json(['status' => 'error', 'message' => 'No payment ID'], 400);
-                }
+            // Get payment details from Mercado Pago
+            $accessToken = config('services.mercadopago.access_token');
+            $response = Http::withToken($accessToken)
+                ->get("https://api.mercadopago.com/v1/payments/{$mpPaymentId}");
 
-                // Get payment info from Mercado Pago using SDK v3
-                MercadoPagoConfig::setAccessToken(config('services.mercadopago.access_token'));
-                $client = new PaymentClient();
-                $mpPayment = $client->get($paymentId);
+            if (!$response->successful()) {
+                Log::error('Failed to fetch MP payment', ['id' => $mpPaymentId]);
+                return response()->json(['status' => 'error'], 400);
+            }
 
-                if (!$mpPayment) {
-                    return response()->json(['status' => 'error', 'message' => 'Payment not found'], 404);
-                }
+            $mpPayment = $response->json();
+            $orderId = $mpPayment['external_reference'] ?? null;
 
-                // Get order from external reference
-                $orderId = $mpPayment->external_reference;
-                $order = Order::find($orderId);
+            $order = Order::find($orderId);
+            if (!$order) {
+                Log::error('Order not found', ['order_id' => $orderId]);
+                return response()->json(['status' => 'error'], 404);
+            }
 
-                if (!$order) {
-                    Log::error("Order not found for external reference: {$orderId}");
-                    return response()->json(['status' => 'error', 'message' => 'Order not found'], 404);
-                }
+            $payment = Payment::where('order_id', $order->id)->first();
+            if (!$payment) {
+                return response()->json(['status' => 'error'], 404);
+            }
 
-                $payment = Payment::where('order_id', $order->id)->first();
+            $status = $mpPayment['status'];
+            Log::info("Payment status: {$status}", ['order_id' => $orderId, 'mp_id' => $mpPaymentId]);
 
-                if (!$payment) {
-                    Log::error("Payment record not found for order: {$orderId}");
-                    return response()->json(['status' => 'error', 'message' => 'Payment record not found'], 404);
-                }
+            if ($status === 'approved') {
+                // Mark payment as completed
+                $payment->markAsCompleted($mpPaymentId, $mpPayment);
 
-                // Handle payment status
-                Log::info("💰 Payment status from Mercado Pago: {$mpPayment->status}", [
-                    'payment_id' => $mpPayment->id,
-                    'order_id' => $orderId,
-                    'amount' => $mpPayment->transaction_amount ?? null,
-                ]);
+                // Auto-transfer to sellers
+                $this->transferToSellers($payment);
 
-                switch ($mpPayment->status) {
-                    case 'approved':
-                        Log::info('✅ Payment APPROVED - updating to completed');
-                        $this->handlePaymentSuccess([
-                            'id' => $mpPayment->id,
-                            'status' => $mpPayment->status,
-                            'transaction_id' => $payment->transaction_id,
-                        ]);
-                        break;
-
-                    case 'rejected':
-                    case 'cancelled':
-                        Log::info('❌ Payment REJECTED/CANCELLED - updating to failed');
-                        $this->handlePaymentFailure([
-                            'id' => $mpPayment->id,
-                            'status' => $mpPayment->status,
-                            'transaction_id' => $payment->transaction_id,
-                        ]);
-                        break;
-
-                    case 'pending':
-                    case 'in_process':
-                        // Payment is still processing, do nothing
-                        Log::info("⏳ Payment {$mpPayment->id} is {$mpPayment->status}");
-                        break;
-                }
+            } elseif (in_array($status, ['rejected', 'cancelled'])) {
+                $payment->markAsFailed($mpPayment);
+                PaymentSplit::where('payment_id', $payment->id)->update(['status' => 'failed']);
             }
 
             return response()->json(['status' => 'success']);
 
-        } catch (MPApiException $e) {
-            Log::error('Mercado Pago webhook API error', [
-                'message' => $e->getMessage(),
-                'request' => $request->all(),
-            ]);
-            return response()->json(['error' => 'Webhook processing failed'], 400);
         } catch (\Exception $e) {
-            Log::error('Mercado Pago webhook error: ' . $e->getMessage());
-            return response()->json(['error' => 'Webhook processing failed'], 400);
+            Log::error('Webhook error: ' . $e->getMessage());
+            return response()->json(['status' => 'error'], 500);
         }
     }
 
-    // Handle successful payment
-    private function handlePaymentSuccess($paymentIntent)
+    /**
+     * Transfer funds to sellers using Mercado Pago Payout API
+     */
+    private function transferToSellers(Payment $payment)
     {
-        $transactionId = $paymentIntent['id'] ?? null;
+        $splits = PaymentSplit::where('payment_id', $payment->id)
+            ->with('seller')
+            ->get();
 
-        $payment = Payment::where('transaction_id', $transactionId)->first();
+        $accessToken = config('services.mercadopago.access_token');
 
-        if ($payment) {
-            $payment->markAsCompleted($transactionId, $paymentIntent);
+        foreach ($splits as $split) {
+            $seller = $split->seller;
 
-            Log::info("Payment completed for order #{$payment->order->order_number}");
+            if (!$seller->mercadopago_user_id) {
+                Log::error('Seller has no MP user_id', ['seller_id' => $seller->id]);
+                $split->update(['status' => 'failed']);
+                continue;
+            }
+
+            try {
+                // Create transfer to seller using Payout API
+                $response = Http::withToken($accessToken)
+                    ->post('https://api.mercadopago.com/v1/transaction_intentions/process', [
+                        'external_id' => "split_{$split->id}",
+                        'point_of_interaction' => 'application',
+                        'destination_account' => [
+                            'owner' => [
+                                'identification' => [
+                                    'type' => 'ID',
+                                    'number' => $seller->mercadopago_user_id,
+                                ],
+                            ],
+                        ],
+                        'transaction' => [
+                            'from' => 'account_money',
+                            'total_amount' => (float) $split->amount,
+                            'currency_id' => 'BRL',
+                        ],
+                    ]);
+
+                if ($response->successful()) {
+                    $split->update(['status' => 'completed']);
+                    Log::info('Transfer to seller completed', [
+                        'seller_id' => $seller->id,
+                        'amount' => $split->amount,
+                    ]);
+                } else {
+                    // Try alternative: Send money via user_id
+                    $altResponse = Http::withToken($accessToken)
+                        ->post('https://api.mercadopago.com/v1/account/bank_report/payout', [
+                            'user_id' => (int) $seller->mercadopago_user_id,
+                            'amount' => (float) $split->amount,
+                            'external_reference' => "split_{$split->id}",
+                        ]);
+
+                    if ($altResponse->successful()) {
+                        $split->update(['status' => 'completed']);
+                        Log::info('Transfer to seller completed (alt)', [
+                            'seller_id' => $seller->id,
+                            'amount' => $split->amount,
+                        ]);
+                    } else {
+                        $split->update(['status' => 'pending_manual']);
+                        Log::warning('Auto-transfer failed, marked for manual', [
+                            'seller_id' => $seller->id,
+                            'amount' => $split->amount,
+                            'response' => $response->json(),
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Transfer to seller failed', [
+                    'seller_id' => $seller->id,
+                    'error' => $e->getMessage(),
+                ]);
+                $split->update(['status' => 'pending_manual']);
+            }
         }
     }
 
-    // Handle failed payment
-    private function handlePaymentFailure($paymentIntent)
-    {
-        $transactionId = $paymentIntent['id'] ?? null;
-
-        $payment = Payment::where('transaction_id', $transactionId)->first();
-
-        if ($payment) {
-            $payment->markAsFailed($paymentIntent);
-
-            Log::warning("Payment failed for order #{$payment->order->order_number}");
-        }
-    }
-
-    // Get payment status
+    /**
+     * Get payment status
+     */
     public function status($id)
     {
-        $user = Auth::user();
-
-        $payment = Payment::with('order')
-            ->whereHas('order', function ($query) use ($user) {
-                $query->where('buyer_id', $user->id);
-            })
+        $payment = Payment::with(['order', 'splits.seller'])
+            ->whereHas('order', fn($q) => $q->where('buyer_id', Auth::id()))
             ->findOrFail($id);
 
         return response()->json($payment);
     }
 
-    // Retry failed payment
+    /**
+     * Retry failed payment
+     */
     public function retry($id)
     {
-        $user = Auth::user();
-
         $payment = Payment::with('order')
-            ->whereHas('order', function ($query) use ($user) {
-                $query->where('buyer_id', $user->id);
-            })
+            ->whereHas('order', fn($q) => $q->where('buyer_id', Auth::id()))
             ->findOrFail($id);
 
         if ($payment->status !== 'failed') {
@@ -357,10 +313,8 @@ class PaymentController extends Controller
         }
 
         $payment->update(['status' => 'pending']);
+        PaymentSplit::where('payment_id', $payment->id)->update(['status' => 'pending']);
 
-        return response()->json([
-            'message' => 'Payment retry initiated',
-            'payment' => $payment,
-        ]);
+        return response()->json(['message' => 'Payment retry initiated', 'payment' => $payment]);
     }
 }

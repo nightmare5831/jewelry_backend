@@ -32,6 +32,9 @@ class User extends Authenticatable implements JWTSubject
         'avatar_url',
         'is_active',
         'mercadopago_connected',
+        'mercadopago_user_id',
+        'mercadopago_access_token',
+        'mercadopago_refresh_token',
     ];
 
     /**
@@ -42,6 +45,8 @@ class User extends Authenticatable implements JWTSubject
     protected $hidden = [
         'password',
         'remember_token',
+        'mercadopago_access_token',
+        'mercadopago_refresh_token',
     ];
 
     /**
@@ -126,7 +131,7 @@ class User extends Authenticatable implements JWTSubject
      */
     public function hasMercadoPagoAccount(): bool
     {
-        return $this->mercadopago_connected;
+        return $this->mercadopago_connected && $this->mercadopago_user_id;
     }
 
     /**

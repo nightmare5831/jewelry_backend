@@ -32,6 +32,9 @@ Route::get('/gold-price/current', [GoldPriceController::class, 'getCurrentPrice'
 // Mercado Pago webhook (public route - no auth required)
 Route::post('/payments/webhook', [PaymentController::class, 'webhook']);
 
+// Mercado Pago OAuth callback (public - no auth)
+Route::get('/mercadopago/callback', [SellerSettingsController::class, 'handleOAuthCallback']);
+
 // Public Q&A messages (anyone can view)
 Route::get('/messages', [MessageController::class, 'index']);
 
@@ -86,9 +89,10 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/orders', [SellerController::class, 'orders']);
         Route::patch('/orders/{id}/ship', [OrderController::class, 'markAsShipped']);
 
-        // Mercado Pago Settings
-        Route::post('/mercadopago', [SellerSettingsController::class, 'updateMercadoPago']);
-        Route::get('/mercadopago', [SellerSettingsController::class, 'getMercadoPagoStatus']);
+        // Mercado Pago OAuth
+        Route::get('/mercadopago/oauth-url', [SellerSettingsController::class, 'getOAuthUrl']);
+        Route::get('/mercadopago/status', [SellerSettingsController::class, 'getStatus']);
+        Route::post('/mercadopago/disconnect', [SellerSettingsController::class, 'disconnect']);
     });
 
     // Payment routes
