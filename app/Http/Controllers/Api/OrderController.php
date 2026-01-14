@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Cart;
-use App\Models\Payment;
 use App\Models\Product;
 use App\Models\Review;
 use Illuminate\Http\Request;
@@ -112,12 +111,9 @@ class OrderController extends Controller
             $shippingAmount = 0; // Can be calculated based on logic
             $taxAmount = 0; // Can be calculated based on logic
 
-            // Platform fee: 10% default (will be adjusted based on payment method)
-            $platformFeeRate = 0.10;
-            $platformFee = round($productTotal * $platformFeeRate, 2);
-
-            // Total amount customer pays
-            $totalAmount = $productTotal + $platformFee + $shippingAmount + $taxAmount;
+            // Total amount is product total + shipping + tax
+            // Platform fee (8-10%) will be added when payment is created per-seller
+            $totalAmount = $productTotal + $shippingAmount + $taxAmount;
 
             // Create order with stock reservation (24 hour timeout)
             $order = Order::create([
@@ -146,15 +142,8 @@ class OrderController extends Controller
                 $cartItem->product->decrement('stock_quantity', $cartItem->quantity);
             }
 
-            // Create payment record with platform fee
-            $payment = Payment::create([
-                'order_id' => $order->id,
-                'payment_method' => $request->payment_method ?? 'credit_card',
-                'amount' => $totalAmount,
-                'product_amount' => $productTotal,
-                'platform_fee' => $platformFee,
-                'status' => 'pending',
-            ]);
+            // NOTE: Payment records are created per-seller in PaymentController::createIntent
+            // when the buyer submits payment details (card or PIX)
 
             // Remove only processed items from cart (keep non-selected items)
             $processedItemIds = $itemsToProcess->pluck('id')->toArray();
@@ -163,12 +152,11 @@ class OrderController extends Controller
             DB::commit();
 
             // Load relationships
-            $order->load(['items.product', 'items.seller', 'payment']);
+            $order->load(['items.product', 'items.seller']);
 
             return response()->json([
                 'message' => 'Order created successfully',
                 'order' => $order,
-                'payment' => $payment,
             ], 201);
 
         } catch (\Exception $e) {

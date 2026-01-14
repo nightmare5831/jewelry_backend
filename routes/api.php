@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\WishlistController;
 use App\Http\Controllers\Api\SellerController;
 use App\Http\Controllers\Api\SellerSettingsController;
 use App\Http\Controllers\Api\UploadController;
+use App\Http\Controllers\Api\RefundController;
 
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
@@ -93,13 +94,24 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/mercadopago/oauth-url', [SellerSettingsController::class, 'getOAuthUrl']);
         Route::get('/mercadopago/status', [SellerSettingsController::class, 'getStatus']);
         Route::post('/mercadopago/disconnect', [SellerSettingsController::class, 'disconnect']);
+
+        // Refund management (seller)
+        Route::get('/refunds', [RefundController::class, 'sellerIndex']);
+        Route::post('/refunds/{id}/approve', [RefundController::class, 'approve']);
+        Route::post('/refunds/{id}/reject', [RefundController::class, 'reject']);
     });
 
     // Payment routes
     Route::prefix('payments')->group(function () {
         Route::post('/create-intent', [PaymentController::class, 'createIntent']);
         Route::post('/{id}/retry', [PaymentController::class, 'retry']);
-        Route::get('/{id}/status', [PaymentController::class, 'status']);
+        Route::get('/order/{orderId}/status', [PaymentController::class, 'status']);
+    });
+
+    // Refund routes (buyer)
+    Route::prefix('refunds')->group(function () {
+        Route::get('/', [RefundController::class, 'buyerIndex']);
+        Route::post('/', [RefundController::class, 'store']);
     });
 
     // Wishlist routes
