@@ -118,9 +118,12 @@ class PaymentController extends Controller
                 'payment_methods' => [
                     'installments' => 12,
                     'default_installments' => 1,
-                    'included_payment_types' => [
-                        ['id' => 'credit_card'],
-                        ['id' => 'bank_transfer'], // PIX
+                    'excluded_payment_types' => [
+                        ['id' => 'ticket'],
+                        ['id' => 'debit_card'],
+                        ['id' => 'prepaid_card'],
+                        ['id' => 'digital_currency'],
+                        ['id' => 'digital_wallet'],
                     ],
                 ],
                 'binary_mode' => false, // Allow pending payments
