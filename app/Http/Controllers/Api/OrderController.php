@@ -234,6 +234,64 @@ class OrderController extends Controller
         return response()->json($orders);
     }
 
+    // Seller: Accept order
+    public function acceptOrder($id)
+    {
+        $user = Auth::user();
+
+        if (!$user->isSeller()) {
+            return response()->json(['error' => 'Only sellers can access this endpoint'], 403);
+        }
+
+        $order = Order::whereHas('items', function ($query) use ($user) {
+            $query->where('seller_id', $user->id);
+        })->findOrFail($id);
+
+        if ($order->status !== 'confirmed') {
+            return response()->json(['error' => 'Only confirmed (paid) orders can be accepted'], 400);
+        }
+
+        $order->acceptOrder();
+
+        return response()->json([
+            'message' => 'Order accepted successfully',
+            'order' => $order,
+        ]);
+    }
+
+    // Seller: Reject order
+    public function rejectOrder(Request $request, $id)
+    {
+        $user = Auth::user();
+
+        if (!$user->isSeller()) {
+            return response()->json(['error' => 'Only sellers can access this endpoint'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'reason' => 'required|string|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $order = Order::whereHas('items', function ($query) use ($user) {
+            $query->where('seller_id', $user->id);
+        })->with('items.product')->findOrFail($id);
+
+        if ($order->status !== 'confirmed') {
+            return response()->json(['error' => 'Only confirmed (paid) orders can be rejected'], 400);
+        }
+
+        $order->rejectOrder($request->reason);
+
+        return response()->json([
+            'message' => 'Order rejected',
+            'order' => $order,
+        ]);
+    }
+
     // Seller: Mark order as shipped
     public function markAsShipped(Request $request, $id)
     {
@@ -244,7 +302,7 @@ class OrderController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'tracking_number' => 'nullable|string',
+            'tracking_number' => 'required|string',
         ]);
 
         if ($validator->fails()) {
@@ -255,8 +313,8 @@ class OrderController extends Controller
             $query->where('seller_id', $user->id);
         })->findOrFail($id);
 
-        if ($order->status !== 'confirmed') {
-            return response()->json(['error' => 'Only confirmed orders can be marked as shipped'], 400);
+        if ($order->status !== 'accepted') {
+            return response()->json(['error' => 'Only accepted orders can be marked as shipped'], 400);
         }
 
         $order->markAsShipped($request->tracking_number);

@@ -88,6 +88,8 @@ Route::middleware('auth:api')->group(function () {
 
         // Orders
         Route::get('/orders', [SellerController::class, 'orders']);
+        Route::post('/orders/{id}/accept', [OrderController::class, 'acceptOrder']);
+        Route::post('/orders/{id}/reject', [OrderController::class, 'rejectOrder']);
         Route::patch('/orders/{id}/ship', [OrderController::class, 'markAsShipped']);
 
         // Mercado Pago OAuth
