@@ -15,6 +15,8 @@ use App\Http\Controllers\Api\SellerController;
 use App\Http\Controllers\Api\SellerSettingsController;
 use App\Http\Controllers\Api\UploadController;
 use App\Http\Controllers\Api\RefundController;
+use App\Http\Controllers\Api\AddressController;
+use App\Http\Controllers\Api\ShippingController;
 
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
@@ -75,6 +77,7 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/{id}', [OrderController::class, 'show']);
         Route::post('/', [OrderController::class, 'store']);
         Route::post('/{id}/cancel', [OrderController::class, 'cancel']);
+        Route::get('/{id}/tracking', [ShippingController::class, 'getTracking']);
     });
 
     // Seller routes
@@ -91,6 +94,7 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/orders/{id}/accept', [OrderController::class, 'acceptOrder']);
         Route::post('/orders/{id}/reject', [OrderController::class, 'rejectOrder']);
         Route::patch('/orders/{id}/ship', [OrderController::class, 'markAsShipped']);
+        Route::post('/orders/{id}/create-shipment', [ShippingController::class, 'createShipment']);
 
         // Mercado Pago OAuth
         Route::get('/mercadopago/oauth-url', [SellerSettingsController::class, 'getOAuthUrl']);
@@ -122,6 +126,14 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/add', [WishlistController::class, 'add']);
         Route::delete('/{productId}', [WishlistController::class, 'remove']);
         Route::post('/clear', [WishlistController::class, 'clear']);
+    });
+
+    // Address routes
+    Route::prefix('addresses')->group(function () {
+        Route::get('/', [AddressController::class, 'index']);
+        Route::post('/', [AddressController::class, 'store']);
+        Route::delete('/{id}', [AddressController::class, 'destroy']);
+        Route::patch('/{id}/default', [AddressController::class, 'setDefault']);
     });
 
     // File upload routes

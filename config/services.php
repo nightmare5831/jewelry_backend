@@ -43,4 +43,9 @@ return [
         'redirect_uri' => env('APP_URL') . '/api/mercadopago/callback',
     ],
 
+    'apponlog' => [
+        'base_url' => env('APPONLOG_BASE_URL', 'https://api.apponlog.com.br'),
+        'api_key' => env('APPONLOG_API_KEY'),
+    ],
+
 ];
