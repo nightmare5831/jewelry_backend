@@ -21,7 +21,7 @@ class OrderController extends Controller
         $user = Auth::user();
 
         $orders = Order::where('buyer_id', $user->id)
-            ->with(['items.product', 'items.seller', 'payment', 'buyer'])
+            ->with(['items.product', 'items.seller', 'items.ringCustomization', 'payment', 'buyer'])
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
@@ -35,7 +35,7 @@ class OrderController extends Controller
 
         $order = Order::where('buyer_id', $user->id)
             ->where('id', $id)
-            ->with(['items.product', 'items.seller', 'payment', 'buyer'])
+            ->with(['items.product', 'items.seller', 'items.ringCustomization', 'payment', 'buyer'])
             ->firstOrFail();
 
         return response()->json($order);
@@ -226,7 +226,7 @@ class OrderController extends Controller
             $query->where('seller_id', $user->id);
         })
         ->with(['items' => function ($query) use ($user) {
-            $query->where('seller_id', $user->id)->with('product');
+            $query->where('seller_id', $user->id)->with(['product', 'ringCustomization']);
         }, 'buyer', 'payment'])
         ->orderBy('created_at', 'desc')
         ->paginate(20);
