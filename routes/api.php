@@ -99,7 +99,6 @@ Route::middleware('auth:api')->group(function () {
         // Mercado Pago OAuth
         Route::get('/mercadopago/oauth-url', [SellerSettingsController::class, 'getOAuthUrl']);
         Route::get('/mercadopago/status', [SellerSettingsController::class, 'getStatus']);
-        Route::post('/mercadopago/connect-token', [SellerSettingsController::class, 'connectWithToken']);
         Route::post('/mercadopago/disconnect', [SellerSettingsController::class, 'disconnect']);
 
         // Refund management (seller)
