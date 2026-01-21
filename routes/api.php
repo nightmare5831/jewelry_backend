@@ -22,6 +22,9 @@ use App\Http\Controllers\Api\ShippingController;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
+// Public avatar upload (for registration)
+Route::post('/upload/avatar', [UploadController::class, 'uploadAvatar']);
+
 // Public product routes
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{id}', [ProductController::class, 'show']);
