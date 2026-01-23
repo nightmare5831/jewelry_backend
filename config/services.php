@@ -45,7 +45,7 @@ return [
     ],
 
     'apponlog' => [
-        'base_url' => env('APPONLOG_BASE_URL', 'https://api.apponlog.com.br'),
+        'base_url' => env('APPONLOG_BASE_URL', 'https://apponlog.com.br'),
         'api_key' => env('APPONLOG_API_KEY'),
     ],
 
