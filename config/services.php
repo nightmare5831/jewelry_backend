@@ -46,7 +46,10 @@ return [
 
     'apponlog' => [
         'base_url' => env('APPONLOG_BASE_URL', 'https://apponlog.com.br'),
-        'api_key' => env('APPONLOG_API_KEY'),
+        'token' => env('APPONLOG_TOKEN'),
+        'user_id' => env('APPONLOG_USER_ID', '17926'),
+        'shipping_company_id' => env('APPONLOG_SHIPPING_COMPANY_ID', '132226'),
+        'default_modality' => env('APPONLOG_DEFAULT_MODALITY', '133'),
     ],
 
 ];
