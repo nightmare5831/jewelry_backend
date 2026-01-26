@@ -30,6 +30,7 @@ class SellerSettingsController extends Controller
             'platform_id' => 'mp',
             'redirect_uri' => config('services.mercadopago.redirect_uri'),
             'state' => $user->id,
+            'prompt' => 'login', // Force user to login even if session exists
         ]);
 
         return response()->json([
@@ -90,12 +91,12 @@ class SellerSettingsController extends Controller
                 'mode' => $mode,
             ]);
 
-            // Redirect to app with success
-            return redirect('perfectjewel://mercadopago-success');
+            // Show HTML page that will redirect to app
+            return view('mercadopago-success');
 
         } catch (\Exception $e) {
             Log::error('MercadoPago OAuth error', ['error' => $e->getMessage()]);
-            return redirect('perfectjewel://mercadopago-error');
+            return view('mercadopago-error');
         }
     }
 
