@@ -109,24 +109,17 @@
             <div class="checkmark"></div>
         </div>
         <h1>Mercado Pago Conectado!</h1>
-        <p>Sua conta foi conectada com sucesso. Redirecionando para o aplicativo...</p>
-        <div class="spinner"></div>
-        <p class="note">Se o aplicativo não abrir automaticamente, <a href="perfectjewel://mercadopago-success" class="button" style="display: inline; padding: 0; background: none; color: #667eea;">clique aqui</a></p>
+        <p>Sua conta foi conectada com sucesso. Você pode fechar esta janela e voltar ao aplicativo.</p>
+        <a href="javascript:window.close();" class="button">Fechar Janela</a>
+        <p class="note">Se o botão não funcionar, você pode fechar esta aba manualmente.</p>
     </div>
 
     <script>
-        // Try to open the app immediately
-        window.location.href = 'perfectjewel://mercadopago-success';
-
-        // Fallback: Try again after a short delay
+        // Attempt to close the window automatically after a short delay
+        // This works if the window was opened by JavaScript from the app
         setTimeout(() => {
-            window.location.href = 'perfectjewel://mercadopago-success';
-        }, 500);
-
-        // Give up after 3 seconds and show manual link
-        setTimeout(() => {
-            document.querySelector('.spinner').style.display = 'none';
-        }, 3000);
+            window.close();
+        }, 1500);
     </script>
 </body>
 </html>

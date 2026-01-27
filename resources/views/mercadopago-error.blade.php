@@ -93,15 +93,16 @@
             <div class="x-mark"></div>
         </div>
         <h1>Erro na Conexão</h1>
-        <p>Houve um problema ao conectar sua conta do Mercado Pago. Por favor, tente novamente.</p>
-        <a href="perfectjewel://mercadopago-error" class="button">Voltar ao App</a>
+        <p>Houve um problema ao conectar sua conta do Mercado Pago. Por favor, feche esta janela, volte ao aplicativo e tente novamente.</p>
+        <a href="javascript:window.close();" class="button">Fechar Janela</a>
     </div>
 
     <script>
-        // Try to open the app immediately
+        // Attempt to close the window automatically after a short delay
+        // This works if the window was opened by JavaScript from the app
         setTimeout(() => {
-            window.location.href = 'perfectjewel://mercadopago-error';
-        }, 1000);
+            window.close();
+        }, 1500);
     </script>
 </body>
 </html>
