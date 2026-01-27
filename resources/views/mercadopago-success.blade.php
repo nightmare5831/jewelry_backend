@@ -109,17 +109,20 @@
             <div class="checkmark"></div>
         </div>
         <h1>Mercado Pago Conectado!</h1>
-        <p>Sua conta foi conectada com sucesso. Você pode fechar esta janela e voltar ao aplicativo.</p>
-        <a href="javascript:window.close();" class="button">Fechar Janela</a>
-        <p class="note">Se o botão não funcionar, você pode fechar esta aba manualmente.</p>
-    </div>
+        <p style="margin-bottom: 32px;">Sua conta foi conectada com sucesso!</p>
 
-    <script>
-        // Attempt to close the window automatically after a short delay
-        // This works if the window was opened by JavaScript from the app
-        setTimeout(() => {
-            window.close();
-        }, 1500);
-    </script>
+        <div style="background: #f3f4f6; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+            <p style="margin: 0; color: #374151; font-weight: 600; font-size: 15px;">
+                ✓ Próximo passo:
+            </p>
+            <p style="margin: 8px 0 0 0; color: #6b7280; font-size: 14px;">
+                Feche esta aba do navegador e volte ao aplicativo. Sua conexão já foi salva!
+            </p>
+        </div>
+
+        <p class="note" style="color: #9ca3af; font-size: 13px;">
+            O aplicativo detectará automaticamente a conexão quando você retornar.
+        </p>
+    </div>
 </body>
 </html>

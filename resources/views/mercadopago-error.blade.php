@@ -93,16 +93,16 @@
             <div class="x-mark"></div>
         </div>
         <h1>Erro na Conexão</h1>
-        <p>Houve um problema ao conectar sua conta do Mercado Pago. Por favor, feche esta janela, volte ao aplicativo e tente novamente.</p>
-        <a href="javascript:window.close();" class="button">Fechar Janela</a>
-    </div>
+        <p style="margin-bottom: 32px;">Houve um problema ao conectar sua conta do Mercado Pago.</p>
 
-    <script>
-        // Attempt to close the window automatically after a short delay
-        // This works if the window was opened by JavaScript from the app
-        setTimeout(() => {
-            window.close();
-        }, 1500);
-    </script>
+        <div style="background: #f3f4f6; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+            <p style="margin: 0; color: #374151; font-weight: 600; font-size: 15px;">
+                ⚠ Próximo passo:
+            </p>
+            <p style="margin: 8px 0 0 0; color: #6b7280; font-size: 14px;">
+                Feche esta aba do navegador, volte ao aplicativo e tente conectar novamente.
+            </p>
+        </div>
+    </div>
 </body>
 </html>
