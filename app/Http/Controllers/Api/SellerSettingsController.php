@@ -111,12 +111,19 @@ class SellerSettingsController extends Controller
             return response()->json(['error' => 'Only sellers can manage Mercado Pago'], 403);
         }
 
-        $user->update([
+        $updateData = [
             'mercadopago_connected' => false,
             'mercadopago_user_id' => null,
             'mercadopago_access_token' => null,
             'mercadopago_refresh_token' => null,
-        ]);
+        ];
+
+        // If seller was approved, revert to pending since MP connection is required for approval
+        if ($user->seller_status === 'approved') {
+            $updateData['seller_status'] = 'pending';
+        }
+
+        $user->update($updateData);
 
         return response()->json(['message' => 'Mercado Pago disconnected']);
     }
