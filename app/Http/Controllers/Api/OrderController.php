@@ -53,6 +53,7 @@ class OrderController extends Controller
             'shipping_address.country' => 'required|string',
             'cart_item_ids' => 'nullable|array',
             'cart_item_ids.*' => 'integer',
+            'shipping_amount' => 'nullable|numeric|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -108,10 +109,10 @@ class OrderController extends Controller
             $productTotal = $itemsToProcess->sum(function ($item) {
                 return $item->price_at_time_of_add * $item->quantity;
             });
-            $shippingAmount = 0; // Can be calculated based on logic
-            $taxAmount = 0; // Can be calculated based on logic
+            $shippingAmount = (float) ($request->shipping_amount ?? 0);
+            $taxAmount = 0;
 
-            // Total amount is product total + shipping + tax
+            // Total amount is product total + shipping (platform keeps shipping)
             // Platform fee (8-10%) will be added when payment is created per-seller
             $totalAmount = $productTotal + $shippingAmount + $taxAmount;
 
