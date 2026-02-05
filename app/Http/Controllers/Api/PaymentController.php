@@ -286,7 +286,13 @@ class PaymentController extends Controller
                 $paymentData['application_fee'] = (float) $applicationFee;
             }
 
+            // Generate idempotency key to prevent duplicate payments
+            $idempotencyKey = 'card_' . $payment->id . '_' . $order->id . '_' . time();
+
             $mpPaymentResponse = Http::withToken($sellerToken)
+                ->withHeaders([
+                    'X-Idempotency-Key' => $idempotencyKey,
+                ])
                 ->post('https://api.mercadopago.com/v1/payments', $paymentData);
 
             if (!$mpPaymentResponse->successful()) {
@@ -372,13 +378,20 @@ class PaymentController extends Controller
                 $paymentData['application_fee'] = (float) $applicationFee;
             }
 
+            // Generate idempotency key to prevent duplicate payments
+            $idempotencyKey = 'pix_' . $payment->id . '_' . $order->id . '_' . time();
+
             Log::info('Sending PIX payment request to MP', [
                 'seller_id' => $seller->id,
                 'payment_data' => $paymentData,
                 'token_prefix' => substr($sellerToken, 0, 20) . '...',
+                'idempotency_key' => $idempotencyKey,
             ]);
 
             $mpPaymentResponse = Http::withToken($sellerToken)
+                ->withHeaders([
+                    'X-Idempotency-Key' => $idempotencyKey,
+                ])
                 ->post('https://api.mercadopago.com/v1/payments', $paymentData);
 
             if (!$mpPaymentResponse->successful()) {
